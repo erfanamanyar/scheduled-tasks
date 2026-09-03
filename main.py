@@ -51,5 +51,3 @@ if will_rain:
         to=twilio_to_number
     )
     print(message.status)
-else:
-    print("No rain expected — no message sent.")
