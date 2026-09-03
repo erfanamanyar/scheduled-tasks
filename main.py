@@ -5,13 +5,23 @@ from twilio.http.http_client import TwilioHttpClient
 
 OWM_Endpoint = "https://api.openweathermap.org/data/2.5/forecast"
 
-# --- Fill these in with YOUR actual values ---
-api_key = "PASTE_YOUR_OPENWEATHERMAP_API_KEY_HERE"
-account_sid = "PASTE_YOUR_TWILIO_ACCOUNT_SID_HERE"
-auth_token = "PASTE_YOUR_TWILIO_AUTH_TOKEN_HERE"
-twilio_from_number = "+1XXXXXXXXXX"   # Your Twilio number
-twilio_to_number = "+1XXXXXXXXXX"     # Your verified personal number
-# ----------------------------------------------
+api_key = os.environ.get("OWM_API_KEY")
+account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
+twilio_from_number = os.environ.get("TWILIO_FROM_NUMBER")
+twilio_to_number = os.environ.get("TWILIO_TO_NUMBER")
+
+# Fail early with a clear message if anything's missing
+required = {
+    "OWM_API_KEY": api_key,
+    "TWILIO_ACCOUNT_SID": account_sid,
+    "TWILIO_AUTH_TOKEN": auth_token,
+    "TWILIO_FROM_NUMBER": twilio_from_number,
+    "TWILIO_TO_NUMBER": twilio_to_number,
+}
+missing = [name for name, value in required.items() if not value]
+if missing:
+    raise SystemExit(f"Missing environment variables: {', '.join(missing)}")
 
 weather_params = {
     "lat": 52.240479,
@@ -41,3 +51,5 @@ if will_rain:
         to=twilio_to_number
     )
     print(message.status)
+else:
+    print("No rain expected — no message sent.")
