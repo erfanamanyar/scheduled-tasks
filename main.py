@@ -1,38 +1,43 @@
-# To run and test the code you need to update 4 places:
-# 1. Change MY_EMAIL/MY_PASSWORD to your own details.
-# 2. Go to your email provider and make it allow less secure apps.
-# 3. Update the SMTP ADDRESS to match your email provider.
-# 4. Update birthdays.csv to contain today's month and day.
-# See the solution video in the 100 Days of Python Course for explainations.
-
-
-from datetime import datetime
-import pandas
-import random
-import smtplib
 import os
+import requests
+from twilio.rest import Client
+from twilio.http.http_client import TwilioHttpClient
 
-# import os and use it to get the Github repository secrets
-MY_EMAIL = os.environ.get("MY_EMAIL")
-MY_PASSWORD = os.environ.get("MY_PASSWORD")
+OWM_Endpoint = "https://api.openweathermap.org/data/2.5/forecast"
 
-today = datetime.now()
-today_tuple = (today.month, today.day)
+# --- Fill these in with YOUR actual values ---
+api_key = "PASTE_YOUR_OPENWEATHERMAP_API_KEY_HERE"
+account_sid = "PASTE_YOUR_TWILIO_ACCOUNT_SID_HERE"
+auth_token = "PASTE_YOUR_TWILIO_AUTH_TOKEN_HERE"
+twilio_from_number = "+1XXXXXXXXXX"   # Your Twilio number
+twilio_to_number = "+1XXXXXXXXXX"     # Your verified personal number
+# ----------------------------------------------
 
-data = pandas.read_csv("birthdays.csv")
-birthdays_dict = {(data_row["month"], data_row["day"])                  : data_row for (index, data_row) in data.iterrows()}
-if today_tuple in birthdays_dict:
-    birthday_person = birthdays_dict[today_tuple]
-    file_path = f"letter_templates/letter_{random.randint(1, 3)}.txt"
-    with open(file_path) as letter_file:
-        contents = letter_file.read()
-        contents = contents.replace("[NAME]", birthday_person["name"])
+weather_params = {
+    "lat": 52.240479,
+    "lon": -0.902656,
+    "appid": api_key,
+    "cnt": 4,
+}
 
-    with smtplib.SMTP("YOUR EMAIL PROVIDER SMTP SERVER ADDRESS") as connection:
-        connection.starttls()
-        connection.login(MY_EMAIL, MY_PASSWORD)
-        connection.sendmail(
-            from_addr=MY_EMAIL,
-            to_addrs=birthday_person["email"],
-            msg=f"Subject:Happy Birthday!\n\n{contents}"
-        )
+response = requests.get(OWM_Endpoint, params=weather_params)
+response.raise_for_status()
+weather_data = response.json()
+
+will_rain = False
+for hour_data in weather_data["list"]:
+    condition_code = hour_data["weather"][0]["id"]
+    if int(condition_code) < 700:
+        will_rain = True
+
+if will_rain:
+    proxy_client = TwilioHttpClient()
+    proxy_client.session.proxies = {'https': os.environ.get('https_proxy', '')}
+
+    client = Client(account_sid, auth_token, http_client=proxy_client)
+    message = client.messages.create(
+        body="It's going to rain today. Remember to bring an ☂",
+        from_=twilio_from_number,
+        to=twilio_to_number
+    )
+    print(message.status)
